@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Efficient On-Device TTS: Compressing Qwen3 TTS for Apple Silicon</title>
+    <style>
+        :root {
+            --bg: #fafafa;
+            --card: #ffffff;
+            --text: #1a1a2e;
+            --muted: #555;
+            --accent: #2563eb;
+            --accent2: #7c3aed;
+            --border: #e5e7eb;
+            --code-bg: #f3f4f6;
+            --green: #059669;
+            --red: #dc2626;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        /* Hero */
+        .hero {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%);
+            color: white;
+            padding: 80px 20px 60px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            max-width: 800px;
+            margin: 0 auto 16px;
+            line-height: 1.3;
+        }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto 32px;
+        }
+        .hero .authors {
+            font-size: 0.95rem;
+            opacity: 0.8;
+            margin-bottom: 28px;
+        }
+        .hero .authors a { color: white; }
+        .hero-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .btn-white { background: white; color: var(--accent); }
+        .btn-outline { background: transparent; color: white; border: 2px solid rgba(255,255,255,0.6); }
+        .btn-outline:hover { border-color: white; }
+
+        /* Container */
+        .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+
+        /* Stats bar */
+        .stats-bar {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 24px 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            max-width: 960px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .stat-value { font-size: 2rem; font-weight: 800; color: var(--accent); }
+        .stat-label { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+        /* Sections */
+        section { padding: 60px 20px; }
+        section:nth-child(even) { background: var(--card); }
+        section h2 {
+            font-size: 1.6rem;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+            display: inline-block;
+        }
+        section h3 { font-size: 1.15rem; margin: 24px 0 12px; color: var(--accent2); }
+
+        p { margin-bottom: 16px; }
+
+        /* Abstract */
+        .abstract {
+            background: linear-gradient(to right, #eff6ff, #f5f3ff);
+            border-left: 4px solid var(--accent);
+            padding: 24px 28px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.95rem;
+            color: #374151;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+        }
+        tr:hover td { background: #f9fafb; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .highlight { background: #eff6ff !important; font-weight: 600; }
+        .green { color: var(--green); font-weight: 600; }
+        .red { color: var(--red); }
+
+        /* Pipeline diagram */
+        .pipeline {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .pipe-step {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .pipe-step .step-num {
+            background: var(--accent);
+            color: white;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+        .pipe-step h4 { font-size: 0.95rem; margin-bottom: 6px; }
+        .pipe-step .saving {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--green);
+        }
+        .pipe-step .desc { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+        /* Code */
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin: 16px 0;
+        }
+        code {
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+        }
+        p code, li code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        /* Bar chart (CSS) */
+        .bar-chart { margin: 24px 0; }
+        .bar-row {
+            display: grid;
+            grid-template-columns: 140px 1fr 80px;
+            align-items: center;
+            margin-bottom: 8px;
+            gap: 12px;
+        }
+        .bar-label { font-size: 0.85rem; text-align: right; }
+        .bar-track { background: #e5e7eb; border-radius: 6px; height: 28px; position: relative; }
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 1s ease;
+            display: flex;
+            align-items: center;
+        }
+        .bar-fill-main { background: linear-gradient(90deg, #2563eb, #3b82f6); }
+        .bar-fill-st { background: linear-gradient(90deg, #f59e0b, #fbbf24); margin-top: -28px; }
+        .bar-size { font-size: 0.85rem; font-weight: 600; }
+
+        /* Stacked bar */
+        .stacked-bar {
+            display: flex;
+            height: 28px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .stacked-bar .seg-main { background: #3b82f6; }
+        .stacked-bar .seg-st { background: #f59e0b; }
+
+        /* Footer */
+        footer {
+            background: #1e293b;
+            color: #94a3b8;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        footer a { color: #93c5fd; }
+        footer .footer-links { margin-top: 16px; }
+        footer .footer-links a { margin: 0 12px; }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 1.6rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .pipeline { grid-template-columns: 1fr; }
+            .bar-row { grid-template-columns: 100px 1fr 60px; }
+        }
+
+        /* Equation box */
+        .equation {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            font-family: 'Georgia', serif;
+            font-size: 1.05rem;
+            text-align: center;
+        }
+        .equation .var { font-style: italic; }
+
+        /* Tag badges */
+        .tag {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .tag-green { background: #d1fae5; color: #065f46; }
+        .tag-yellow { background: #fef3c7; color: #92400e; }
+        .tag-red { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+    <h1>Efficient On-Device Text-to-Speech: A Post-Training Compression Pipeline for Qwen3 TTS on Apple Silicon</h1>
+    <p class="subtitle">
+        Five orthogonal compression techniques reduce Qwen3 TTS from 2.35 GB to 808 MB (67% reduction) while preserving audio quality, enabling real-time speech synthesis on edge devices.
+    </p>
+    <p class="authors">
+        <a href="https://github.com/AtomGradient">AtomGradient</a>
+    </p>
+    <div class="hero-buttons">
+        <a href="paper.pdf" class="btn btn-white">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Read Paper (PDF)
+        </a>
+        <a href="https://github.com/AtomGradient/swift-qwen3-tts" class="btn btn-outline">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+        </a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+    <div class="stats-grid">
+        <div>
+            <div class="stat-value">67%</div>
+            <div class="stat-label">Size Reduction</div>
+        </div>
+        <div>
+            <div class="stat-value">59%</div>
+            <div class="stat-label">Memory Reduction</div>
+        </div>
+        <div>
+            <div class="stat-value">0.68x</div>
+            <div class="stat-label">Real-time Factor</div>
+        </div>
+        <div>
+            <div class="stat-value">808 MB</div>
+            <div class="stat-label">Final Model Size</div>
+        </div>
+    </div>
+</div>
+
+<!-- Abstract -->
+<section>
+    <div class="container">
+        <h2>Abstract</h2>
+        <div class="abstract">
+            <p>We present a comprehensive post-training compression pipeline for deploying the Qwen3 TTS 0.6B speech synthesis model on edge devices with Apple Silicon. Our approach combines five orthogonal, stackable techniques&mdash;vocabulary pruning, speech tokenizer pruning, 4-bit weight quantization, MLP neuron pruning, and transformer layer pruning&mdash;to reduce total model size from <strong>2.35 GB to 808 MB (67% reduction)</strong> while preserving perceptually equivalent audio quality.</p>
+            <p style="margin-bottom:0">Central to our approach is a novel <em>token map indirection</em> scheme that reduces the text embedding matrix from 622 MB to 194 MB without retraining the tokenizer or modifying the model architecture. We implement the full inference pipeline natively in Swift using Apple's MLX framework, achieving faster-than-real-time synthesis (~0.8x RTF) with peak memory under 2.0 GB.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Compression Pipeline -->
+<section>
+    <div class="container">
+        <h2>Compression Pipeline</h2>
+        <p>Five orthogonal techniques, each targeting a distinct source of redundancy. They compose without interference and can be applied in any order.</p>
+
+        <div class="pipeline">
+            <div class="pipe-step">
+                <div class="step-num">1</div>
+                <h4>Vocabulary Pruning</h4>
+                <div class="saving">-428 MB</div>
+                <div class="desc">151K &rarr; 47K tokens via token map indirection. <strong>Lossless.</strong></div>
+            </div>
+            <div class="pipe-step">
+                <div class="step-num">2</div>
+                <h4>ST Encoder Stripping</h4>
+                <div class="saving">-225 MB</div>
+                <div class="desc">Remove unused encoder (voice cloning only). <strong>Lossless.</strong></div>
+            </div>
+            <div class="pipe-step">
+                <div class="step-num">3</div>
+                <h4>FP32 &rarr; FP16</h4>
+                <div class="saving">-228 MB</div>
+                <div class="desc">Speech tokenizer decoder. max|w| &lt; 36, safe for fp16.</div>
+            </div>
+            <div class="pipe-step">
+                <div class="step-num">4</div>
+                <h4>4-bit Quantization</h4>
+                <div class="saving">-805 MB</div>
+                <div class="desc">249 linear layers. Embeddings kept in bf16.</div>
+            </div>
+        </div>
+
+        <!-- Size chart -->
+        <h3>Cumulative Size Reduction</h3>
+        <div class="bar-chart">
+            <div class="bar-row">
+                <div class="bar-label">Original (bf16)</div>
+                <div class="bar-track">
+                    <div class="stacked-bar" style="width:100%">
+                        <div class="seg-main" style="width:72.7%"></div>
+                        <div class="seg-st" style="width:27.3%"></div>
+                    </div>
+                </div>
+                <div class="bar-size">2,494 MB</div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-label">+ Vocab Pruning</div>
+                <div class="bar-track">
+                    <div class="stacked-bar" style="width:82.8%">
+                        <div class="seg-main" style="width:67%"></div>
+                        <div class="seg-st" style="width:33%"></div>
+                    </div>
+                </div>
+                <div class="bar-size">2,066 MB</div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-label">+ ST Pruning</div>
+                <div class="bar-track">
+                    <div class="stacked-bar" style="width:64.7%">
+                        <div class="seg-main" style="width:85.8%"></div>
+                        <div class="seg-st" style="width:14.2%"></div>
+                    </div>
+                </div>
+                <div class="bar-size">1,613 MB</div>
+            </div>
+            <div class="bar-row">
+                <div class="bar-label highlight">+ 4-bit Quant</div>
+                <div class="bar-track">
+                    <div class="stacked-bar" style="width:32.4%">
+                        <div class="seg-main" style="width:71.7%"></div>
+                        <div class="seg-st" style="width:28.3%"></div>
+                    </div>
+                </div>
+                <div class="bar-size green">808 MB</div>
+            </div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--muted)">
+            <span style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:2px;vertical-align:middle;margin-right:4px"></span> Main Model
+            <span style="display:inline-block;width:12px;height:12px;background:#f59e0b;border-radius:2px;vertical-align:middle;margin:0 4px 0 16px"></span> Speech Tokenizer
+        </p>
+    </div>
+</section>
+
+<!-- Token Map Indirection -->
+<section>
+    <div class="container">
+        <h2>Token Map Indirection</h2>
+        <p>The text embedding matrix <code>[151,936 &times; 2,048]</code> inherits Qwen3's full multilingual vocabulary, but TTS only uses ~47K tokens. Instead of retraining the tokenizer, we use a simple integer mapping array:</p>
+
+        <div class="equation">
+            embed(<var>t</var>) = <strong>E'</strong>[<strong>m</strong>[<var>t</var>]]
+            &nbsp;&nbsp;where&nbsp;&nbsp;
+            <strong>m</strong> &isin; &Zopf;<sup>151,936</sup>,&nbsp;
+            <strong>E'</strong> &isin; &Ropf;<sup>47,427 &times; 2,048</sup>
+        </div>
+
+        <p>This is <strong>mathematically lossless</strong>&mdash;every preserved embedding row is an exact copy from the original matrix.</p>
+
+        <h3>BPE Space-Prefix Insight</h3>
+        <p>A critical finding: BPE tokenizers produce different tokens for the same word depending on context. Omitting space-prefixed variants causes mid-sentence words to map to zero vectors, triggering premature EOS.</p>
+        <pre><code>encode("my")  = [2408]   # sentence-initial
+encode(" my") = [847]    # mid-sentence (different token!)</code></pre>
+        <p>Including both variants: <strong>20K &rarr; 47K tokens</strong> (still only 31% of original 152K vocabulary).</p>
+    </div>
+</section>
+
+<!-- Results -->
+<section>
+    <div class="container">
+        <h2>Results</h2>
+
+        <h3>Model Size Comparison</h3>
+        <table>
+            <thead>
+                <tr><th>Configuration</th><th class="num">Main Model</th><th class="num">Speech Tok.</th><th class="num">Total</th><th class="num">Reduction</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Original (bf16)</td>
+                    <td class="num">1,812 MB</td><td class="num">682 MB</td>
+                    <td class="num">2,494 MB</td><td class="num">&mdash;</td>
+                </tr>
+                <tr>
+                    <td>+ Vocab pruning</td>
+                    <td class="num">1,384 MB</td><td class="num">682 MB</td>
+                    <td class="num">2,066 MB</td><td class="num">17.2%</td>
+                </tr>
+                <tr>
+                    <td>+ ST pruning</td>
+                    <td class="num">1,384 MB</td><td class="num">229 MB</td>
+                    <td class="num">1,613 MB</td><td class="num">35.3%</td>
+                </tr>
+                <tr class="highlight">
+                    <td><strong>+ 4-bit quantization</strong></td>
+                    <td class="num"><strong>579 MB</strong></td><td class="num"><strong>229 MB</strong></td>
+                    <td class="num"><strong>808 MB</strong></td><td class="num green"><strong>67.6%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Inference Performance (Apple Silicon)</h3>
+        <table>
+            <thead>
+                <tr><th>Configuration</th><th class="num">Disk (MB)</th><th class="num">Peak Mem (GB)</th><th class="num">Load (s)</th><th class="num">RTF</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Original bf16</td>
+                    <td class="num">2,494</td><td class="num">5.14</td><td class="num">2.74</td><td class="num">0.70</td>
+                </tr>
+                <tr>
+                    <td>Original 4-bit</td>
+                    <td class="num">1,611</td><td class="num">4.66</td><td class="num">2.73</td><td class="num">0.74</td>
+                </tr>
+                <tr>
+                    <td>Pruned bf16</td>
+                    <td class="num">1,613</td><td class="num">2.81</td><td class="num">2.58</td><td class="num">0.66</td>
+                </tr>
+                <tr class="highlight">
+                    <td><strong>Pruned 4-bit</strong></td>
+                    <td class="num"><strong>808</strong></td><td class="num green"><strong>2.13</strong></td><td class="num"><strong>2.50</strong></td><td class="num"><strong>0.68</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Quality Assessment</h3>
+        <table>
+            <thead>
+                <tr><th>Technique</th><th>Lossless?</th><th>Quality Impact</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Vocabulary pruning</td>
+                    <td><span class="tag tag-green">Lossless</span></td>
+                    <td>Identical to original</td>
+                </tr>
+                <tr>
+                    <td>ST pruning (fp16 + encoder strip)</td>
+                    <td><span class="tag tag-green">Quasi-lossless</span></td>
+                    <td>Imperceptible (~10<sup>-4</sup> rounding)</td>
+                </tr>
+                <tr>
+                    <td>4-bit quantization</td>
+                    <td><span class="tag tag-yellow">Lossy</span></td>
+                    <td>Near-identical; ~1s avg. longer audio</td>
+                </tr>
+                <tr>
+                    <td>MLP neuron pruning</td>
+                    <td><span class="tag tag-yellow">Lossy</span></td>
+                    <td>Near-identical (inactive neurons only)</td>
+                </tr>
+                <tr>
+                    <td>Layer pruning (-3 layers)</td>
+                    <td><span class="tag tag-red">Lossy</span></td>
+                    <td>Minor prosody degradation</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Architecture -->
+<section>
+    <div class="container">
+        <h2>Model Architecture</h2>
+        <p>Qwen3 TTS 0.6B follows a codec-based speech synthesis paradigm:</p>
+
+        <table>
+            <thead><tr><th>Component</th><th>Architecture</th><th>Key Parameters</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>Talker</strong></td>
+                    <td>28-layer Transformer</td>
+                    <td>hidden=1024, heads=16 (GQA 8 KV), M-RoPE [24,20,20], SwiGLU MLP</td>
+                </tr>
+                <tr>
+                    <td><strong>CodePredictor</strong></td>
+                    <td>5-layer Transformer</td>
+                    <td>16 codebook heads, QK-Norm with RMSNorm</td>
+                </tr>
+                <tr>
+                    <td><strong>SpeechTokenizer</strong></td>
+                    <td>Conv Decoder + Split-RVQ</td>
+                    <td>1 semantic + 15 acoustic codebooks, 12.5 Hz, 24kHz output</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Storage Breakdown (bf16)</h3>
+        <table>
+            <thead><tr><th>Component</th><th class="num">Size</th><th class="num">% of Total</th></tr></thead>
+            <tbody>
+                <tr><td>Text Embedding [151,936 &times; 2,048]</td><td class="num">622 MB</td><td class="num">34.4%</td></tr>
+                <tr><td>MLP Layers (&times;28)</td><td class="num">623 MB</td><td class="num">34.4%</td></tr>
+                <tr><td>Attention Layers (&times;28)</td><td class="num">415 MB</td><td class="num">22.9%</td></tr>
+                <tr><td>Codec Embedding + CodePredictor</td><td class="num">132 MB</td><td class="num">7.3%</td></tr>
+                <tr><td>Other (projections, norms, head)</td><td class="num">19 MB</td><td class="num">1.0%</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Swift Engine -->
+<section>
+    <div class="container">
+        <h2>Swift Inference Engine</h2>
+        <p>The complete Qwen3 TTS pipeline is implemented natively in Swift using Apple's <a href="https://github.com/ml-explore/mlx">MLX</a> framework, with no Python dependencies.</p>
+
+        <h3>Token Map Support</h3>
+        <pre><code>func embedText(_ ids: MLXArray) -> MLXArray {
+    if let tokenMap = model.textTokenMap {
+        return model.textEmbedding(tokenMap[ids])  // mapped lookup
+    }
+    return model.textEmbedding(ids)                // direct lookup
+}</code></pre>
+
+        <h3>Generation Length Control</h3>
+        <p>To prevent runaway generation under stochastic sampling (temperature = 0.9):</p>
+        <div class="equation">
+            <var>T</var><sub>max</sub> = min(<var>T</var><sub>config</sub>, max(75, 6 &middot; |tokens(<var>x</var>)|))
+        </div>
+
+        <h3>Quick Start</h3>
+        <pre><code>git clone https://github.com/AtomGradient/swift-qwen3-tts.git
+cd swift-qwen3-tts
+
+swift run Qwen3TTSDemo \
+  --model path/to/Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite \
+  --speaker Aiden \
+  --text "Hello, this is on-device TTS!" \
+  --output output.wav</code></pre>
+    </div>
+</section>
+
+<!-- Models -->
+<section>
+    <div class="container">
+        <h2>Pre-built Models</h2>
+        <p>We release two edge-optimized model variants, ready for on-device deployment:</p>
+        <table>
+            <thead>
+                <tr><th>Model</th><th class="num">Size</th><th>Compression</th><th>Quality</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="https://huggingface.co/AtomGradientOpenSource/Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite" style="color:var(--accent)">bf16-pruned-vocab-lite</a></td>
+                    <td class="num">1.5 GB</td>
+                    <td>Vocab pruning + ST lite</td>
+                    <td><span class="tag tag-green">Lossless</span></td>
+                </tr>
+                <tr class="highlight">
+                    <td><a href="https://huggingface.co/AtomGradientOpenSource/Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite" style="color:var(--accent)">4bit-pruned-vocab-lite</a></td>
+                    <td class="num">808 MB</td>
+                    <td>+ 4-bit quantization</td>
+                    <td><span class="tag tag-green">Near-identical</span></td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Both models support 9 speakers (Aiden, Serena, Vivian, Ryan, Uncle Fu, Ono Anna, Sohee, Eric, Dylan) across 12 languages with emotion control.</p>
+    </div>
+</section>
+
+<!-- Citation -->
+<section>
+    <div class="container">
+        <h2>Citation</h2>
+        <pre><code>@article{atomgradient2026efficient,
+  title={Efficient On-Device Text-to-Speech: A Post-Training Compression
+         Pipeline for Qwen3 TTS on Apple Silicon},
+  author={AtomGradient},
+  year={2026},
+  url={https://github.com/AtomGradient/swift-qwen3-tts}
+}</code></pre>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <p>Efficient On-Device TTS &mdash; AtomGradient, 2026</p>
+    <div class="footer-links">
+        <a href="paper.pdf">Paper (PDF)</a>
+        <a href="https://github.com/AtomGradient/swift-qwen3-tts">GitHub</a>
+        <a href="https://huggingface.co/AtomGradient">Models</a>
+    </div>
+</footer>
+
+</body>
+</html>

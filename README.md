@@ -31,6 +31,13 @@ Ported from the Python [mlx-audio](https://github.com/Blaizzy/mlx-audio) impleme
 | [Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16) | 0.6B | CustomVoice | Aiden, Ryan, Serena, Vivian, Sohee, Ono_anna, Uncle_fu, Eric, Dylan |
 | [Qwen3-TTS-12Hz-1.7B-Base-bf16](https://huggingface.co/mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16) | 1.7B | Base + Cloning | Built-in + voice cloning |
 
+**Edge-Optimized Models** (compressed for on-device deployment):
+
+| Model | Size | Compression | Description |
+|-------|------|-------------|-------------|
+| [Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite](https://huggingface.co/AtomGradientOpenSource/Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite) | 1.5 GB | 36% smaller | Vocab pruned + ST lite, lossless quality |
+| [Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite](https://huggingface.co/AtomGradientOpenSource/Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite) | 808 MB | 67% smaller | + 4-bit quantization, near-identical quality |
+
 ## Installation
 
 Add to your `Package.swift`:
@@ -259,6 +266,14 @@ Audio Output  [samples] @ 24kHz
 - [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples) (2.29.0+) - LM utilities
 - [swift-transformers](https://github.com/huggingface/swift-transformers) (1.0.0+) - Tokenizers
 
+
+## Research
+
+**[Efficient On-Device Text-to-Speech: A Post-Training Compression Pipeline for Qwen3 TTS on Apple Silicon](https://atomgradient.github.io/swift-qwen3-tts/)**
+
+We present a compression pipeline that reduces Qwen3 TTS from 2.35 GB to 808 MB (67% reduction) while preserving audio quality. Techniques include vocabulary pruning via token map indirection, speech tokenizer pruning, and 4-bit quantization.
+
+[Read the paper](https://atomgradient.github.io/swift-qwen3-tts/) | [PDF](https://atomgradient.github.io/swift-qwen3-tts/paper.pdf)
 
 ## Acknowledgements
 

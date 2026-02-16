@@ -14,6 +14,14 @@ Ported from the Python [mlx-audio](https://github.com/Blaizzy/mlx-audio) impleme
 > cp .build/release/default.metallib .
 > ```
 
+## Research
+
+**[Efficient On-Device Text-to-Speech: A Post-Training Compression Pipeline for Qwen3 TTS on Apple Silicon](https://atomgradient.github.io/swift-qwen3-tts/)**
+
+We present a compression pipeline that reduces Qwen3 TTS from 2.35 GB to 808 MB (67% reduction) while preserving audio quality. Techniques include vocabulary pruning via token map indirection, speech tokenizer pruning, and 4-bit quantization.
+
+[Read the paper](https://atomgradient.github.io/swift-qwen3-tts/) | [PDF](https://atomgradient.github.io/swift-qwen3-tts/paper.pdf)
+
 ## Features
 
 - **VoiceDesign** - Create any voice from a text description (e.g. "A warm female voice")
@@ -266,14 +274,6 @@ Audio Output  [samples] @ 24kHz
 - [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples) (2.29.0+) - LM utilities
 - [swift-transformers](https://github.com/huggingface/swift-transformers) (1.0.0+) - Tokenizers
 
-
-## Research
-
-**[Efficient On-Device Text-to-Speech: A Post-Training Compression Pipeline for Qwen3 TTS on Apple Silicon](https://atomgradient.github.io/swift-qwen3-tts/)**
-
-We present a compression pipeline that reduces Qwen3 TTS from 2.35 GB to 808 MB (67% reduction) while preserving audio quality. Techniques include vocabulary pruning via token map indirection, speech tokenizer pruning, and 4-bit quantization.
-
-[Read the paper](https://atomgradient.github.io/swift-qwen3-tts/) | [PDF](https://atomgradient.github.io/swift-qwen3-tts/paper.pdf)
 
 ## Acknowledgements
 

@@ -4,7 +4,7 @@ Qwen3 TTS for Apple Silicon - a standalone Swift package for text-to-speech synt
 
 Ported from the Python [mlx-audio](https://github.com/Blaizzy/mlx-audio) implementation.
 
-**Platforms**: macOS 14+ / iOS 17+ (Apple Silicon)
+**Platforms**: macOS 18+ / iOS 18+ (Apple Silicon)
 
 > **Prerequisites**: Before running, you need to copy `default.metallib` from your macOS system to the project root directory.
 > ```bash

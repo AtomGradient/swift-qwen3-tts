@@ -12,7 +12,7 @@
 
 import Foundation
 @preconcurrency import MLX
-import HuggingFace
+
 import Tokenizers
 import MLXLMCommon
 import MLXFast
@@ -1422,19 +1422,13 @@ public class Qwen3TTSModel: Module {
 
     // MARK: - Model Loading
 
-    /// Load model from a local directory or HuggingFace Hub repository.
+    /// Load model from a local directory.
     ///
-    /// - Parameter modelPath: Either a local directory path (e.g. "/path/to/model")
-    ///   or a HuggingFace repo ID (e.g. "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16")
+    /// - Parameter modelPath: Local directory path containing config.json and safetensors files
+    ///   (e.g. "/path/to/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16")
     /// - Returns: The loaded model ready for generation
     public static func fromPretrained(_ modelPath: String) async throws -> Qwen3TTSModel {
-        let modelDir: URL
-
-        if isHuggingFaceRepoID(modelPath) {
-            modelDir = try await resolveOrDownloadModel(repoID: modelPath)
-        } else {
-            modelDir = URL(fileURLWithPath: modelPath)
-        }
+        let modelDir = URL(fileURLWithPath: modelPath)
 
         // Load config
         let configPath = modelDir.appendingPathComponent("config.json")
@@ -1503,72 +1497,6 @@ public class Qwen3TTSModel: Module {
         try await model.postLoadHook(modelDir: modelDir)
 
         return model
-    }
-
-    // MARK: - HuggingFace Hub Support
-
-    /// Check if the given string looks like a HuggingFace repo ID (e.g. "org/model-name")
-    /// rather than a local file path.
-    private static func isHuggingFaceRepoID(_ path: String) -> Bool {
-        // Local paths start with /, ~, or .
-        if path.hasPrefix("/") || path.hasPrefix("~") || path.hasPrefix(".") {
-            return false
-        }
-        // A HuggingFace repo ID has exactly one slash: "org/model"
-        let components = path.split(separator: "/")
-        return components.count == 2
-    }
-
-    /// Resolve a HuggingFace repo to a local directory, downloading if needed.
-    private static func resolveOrDownloadModel(repoID: String) async throws -> URL {
-        let client = HubClient.default
-        let cache = client.cache ?? HubCache.default
-
-        guard let repo = Repo.ID(rawValue: repoID) else {
-            throw AudioGenerationError.invalidInput("Invalid HuggingFace repository ID: \(repoID)")
-        }
-
-        // Cache directory: ~/Library/Caches/qwen3-tts/org_model
-        let modelSubdir = repoID.replacingOccurrences(of: "/", with: "_")
-        let modelDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("qwen3-tts")
-            .appendingPathComponent(modelSubdir)
-
-        // Check if model already cached (config.json + safetensors exist)
-        let configPath = modelDir.appendingPathComponent("config.json")
-        if FileManager.default.fileExists(atPath: configPath.path) {
-            let files = try? FileManager.default.contentsOfDirectory(at: modelDir, includingPropertiesForKeys: nil)
-            let hasSafetensors = files?.contains { $0.pathExtension == "safetensors" } ?? false
-
-            if hasSafetensors {
-                print("Using cached model at: \(modelDir.path)")
-                return modelDir
-            }
-        }
-
-        // Download from HuggingFace Hub
-        try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
-
-        // Clean up any partial downloads
-        if let existingFiles = try? FileManager.default.contentsOfDirectory(at: modelDir, includingPropertiesForKeys: nil) {
-            for file in existingFiles {
-                try? FileManager.default.removeItem(at: file)
-            }
-        }
-
-        print("Downloading model \(repoID)...")
-        _ = try await client.downloadSnapshot(
-            of: repo,
-            kind: .model,
-            to: modelDir,
-            revision: "main",
-            progressHandler: { progress in
-                print("  \(progress.completedUnitCount)/\(progress.totalUnitCount) files")
-            }
-        )
-
-        print("Model downloaded to: \(modelDir.path)")
-        return modelDir
     }
 
     /// Post-load initialization

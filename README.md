@@ -57,7 +57,7 @@ targets: [
 import Qwen3TTS
 
 let model = try await Qwen3TTSModel.fromPretrained(
-    "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+    "/path/to/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
 )
 
 let audio = try await model.generate(
@@ -89,7 +89,7 @@ let audio = try await model.generate(
 
 ```swift
 let model = try await Qwen3TTSModel.fromPretrained(
-    "mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16"
+    "/path/to/Qwen3-TTS-12Hz-1.7B-Base-bf16"
 )
 
 // Load 3+ seconds of reference audio (24kHz)
@@ -124,22 +124,22 @@ for try await event in model.generateStream(
 
 ## CLI Tool
 
-The package includes a command-line demo. Models are automatically downloaded from HuggingFace Hub on first use:
+The package includes a command-line demo. Download models from [HuggingFace](https://huggingface.co/mlx-community) and provide the local path:
 
 ```bash
 # Build
 swift build -c release
 
-# VoiceDesign mode (auto-downloads from HuggingFace)
+# VoiceDesign mode
 swift run -c release Qwen3TTSDemo \
-  --model mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16 \
+  --model /path/to/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16 \
   --text "Hello world" \
   --instruct "A clear female voice" \
   --output output.wav
 
-# CustomVoice mode (local path also works)
+# CustomVoice mode
 swift run -c release Qwen3TTSDemo \
-  --model /path/to/CustomVoice-bf16 \
+  --model /path/to/Qwen3-TTS-12Hz-0.6B-CustomVoice-bf16 \
   --text "Hello world" \
   --speaker Ryan \
   --instruct "Calm and professional" \
@@ -147,7 +147,7 @@ swift run -c release Qwen3TTSDemo \
 
 # Voice Cloning (Base model)
 swift run -c release Qwen3TTSDemo \
-  --model mlx-community/Qwen3-TTS-12Hz-1.7B-Base-bf16 \
+  --model /path/to/Qwen3-TTS-12Hz-1.7B-Base-bf16 \
   --text "New content" \
   --reference-audio reference.wav \
   --reference-text "Reference transcript" \
@@ -161,7 +161,7 @@ swift run -c release Qwen3TTSDemo \
 | `--text`, `-t` | Text to synthesize | `"Hello world"` |
 | `--instruct`, `-i` | Voice style description | - |
 | `--speaker`, `-s` | Speaker name (CustomVoice/Base) | - |
-| `--model`, `-m` | Local path or HuggingFace repo ID | `mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16` |
+| `--model`, `-m` | Local path to model directory | (required) |
 | `--output`, `-o` | Output WAV file path | `output.wav` |
 | `--language`, `-l` | Language code | `auto` |
 | `--temperature` | Sampling temperature | `0.9` |
@@ -176,8 +176,7 @@ swift run -c release Qwen3TTSDemo \
 
 ```swift
 public class Qwen3TTSModel: Module {
-    // Load model from local path or HuggingFace Hub (auto-downloads and caches)
-    // Examples: "/local/path/to/model" or "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+    // Load model from a local directory containing config.json and safetensors files
     public static func fromPretrained(_ modelPath: String) async throws -> Qwen3TTSModel
 
     // Unified generation (auto-routes by model type and parameters)
@@ -259,7 +258,7 @@ Audio Output  [samples] @ 24kHz
 - [mlx-swift](https://github.com/ml-explore/mlx-swift) (0.29.0+) - Apple Silicon ML framework
 - [mlx-swift-examples](https://github.com/ml-explore/mlx-swift-examples) (2.29.0+) - LM utilities
 - [swift-transformers](https://github.com/huggingface/swift-transformers) (1.0.0+) - Tokenizers
-- [swift-huggingface](https://github.com/Blaizzy/swift-huggingface) - HuggingFace Hub
+
 
 ## Acknowledgements
 

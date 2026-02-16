@@ -20,7 +20,7 @@ struct Arguments {
     var text: String = "Hello world"
     var instruct: String? = nil
     var speaker: String? = nil
-    var modelPath: String = "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+    var modelPath: String = ""
     var output: String = "output.wav"
     var language: String = "auto"
     var temperature: Float = 0.9
@@ -99,7 +99,7 @@ struct Arguments {
           --text, -t           Text to synthesize (required)
           --instruct, -i       Voice style description (for VoiceDesign/CustomVoice)
           --speaker, -s        Speaker name (for CustomVoice: Vivian, Ryan, Aiden, etc.)
-          --model, -m          Local path or HuggingFace repo ID (e.g. "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16")
+          --model, -m          Local path to model directory (required)
           --output, -o         Output WAV file path (default: "output.wav")
           --language, -l       Language: auto, zh, en, ja, ko, etc. (default: "auto")
           --temperature        Sampling temperature (default: 0.9)
@@ -201,6 +201,12 @@ let profilingTexts: [(text: String, language: String)] = [
 struct Qwen3TTSDemo {
     static func main() async throws {
         let args = Arguments.parse()
+
+        if args.modelPath.isEmpty {
+            print("Error: --model is required. Provide a local path to the model directory.")
+            print("Example: swift run Qwen3TTSDemo --model /path/to/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16 --text \"Hello\"")
+            exit(1)
+        }
 
         if args.profile {
             try await runProfiling(args)

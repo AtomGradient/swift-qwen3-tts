@@ -43,8 +43,8 @@ We present a compression pipeline that reduces Qwen3 TTS from 2.35 GB to 808 MB 
 
 | Model | Size | Compression | Description |
 |-------|------|-------------|-------------|
-| [Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite](https://huggingface.co/AtomGradientOpenSource/Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite) | 1.5 GB | 36% smaller | Vocab pruned + ST lite, lossless quality |
-| [Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite](https://huggingface.co/AtomGradientOpenSource/Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite) | 808 MB | 67% smaller | + 4-bit quantization, near-identical quality |
+| [Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite](https://huggingface.co/AtomGradient/Qwen3-TTS-0.6B-CustomVoice-bf16-pruned-vocab-lite) | 1.5 GB | 36% smaller | Vocab pruned + ST lite, lossless quality |
+| [Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite](https://huggingface.co/AtomGradient/Qwen3-TTS-0.6B-CustomVoice-4bit-pruned-vocab-lite) | 808 MB | 67% smaller | + 4-bit quantization, near-identical quality |
 
 ## Installation
 

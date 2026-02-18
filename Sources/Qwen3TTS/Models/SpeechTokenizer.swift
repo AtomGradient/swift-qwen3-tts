@@ -859,7 +859,7 @@ public enum Qwen3TTSSpeechTokenizerError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .encoderNotAvailable:
-            return "Speech tokenizer encoder is not yet implemented in Swift. Voice cloning (ICL mode) requires the encoder to convert reference audio to codes."
+            return "Speech tokenizer encoder is not available for the loaded model. Voice cloning (ICL mode) requires speech tokenizer encoder weights."
         }
     }
 }

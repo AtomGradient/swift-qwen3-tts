@@ -24,7 +24,10 @@ struct Qwen3TTSTests {
     /// Compare with Python debug_decode_detailed.py
     @Test func testSpeechTokenizerDecode() async throws {
         // 1. Load Qwen3 TTS model
-        let modelPath = "/Users/alex/Downloads/NewQWen3TTS/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+        guard let modelPath = TestResources.voiceDesignModelPath else {
+            print(TestResources.skipMessage("testSpeechTokenizerDecode", env: "QWEN3_TTS_VOICEDESIGN_MODEL_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading Qwen3 TTS model for decode test...\u{001B}[0m")
         let model = try await Qwen3TTSModel.fromPretrained(modelPath)
         print("\u{001B}[32mQwen3 TTS model loaded!\u{001B}[0m")
@@ -281,7 +284,10 @@ struct Qwen3TTSTests {
     /// Test basic text-to-speech generation with Qwen3 TTS model (VoiceDesign mode)
     @Test func testQwen3TTSGenerate() async throws {
         // 1. Load Qwen3 TTS model from local path
-        let modelPath = "/Users/alex/Downloads/NewQWen3TTS/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+        guard let modelPath = TestResources.voiceDesignModelPath else {
+            print(TestResources.skipMessage("testQwen3TTSGenerate", env: "QWEN3_TTS_VOICEDESIGN_MODEL_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading Qwen3 TTS model from: \(modelPath)...\u{001B}[0m")
         let model = try await Qwen3TTSModel.fromPretrained(modelPath)
         print("\u{001B}[32mQwen3 TTS model loaded!\u{001B}[0m")
@@ -318,7 +324,10 @@ struct Qwen3TTSTests {
     /// Test streaming generation with Qwen3 TTS model
     @Test func testQwen3TTSGenerateStream() async throws {
         // 1. Load Qwen3 TTS model from local path
-        let modelPath = "/Users/alex/Downloads/NewQWen3TTS/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+        guard let modelPath = TestResources.voiceDesignModelPath else {
+            print(TestResources.skipMessage("testQwen3TTSGenerateStream", env: "QWEN3_TTS_VOICEDESIGN_MODEL_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading Qwen3 TTS model...\u{001B}[0m")
         let model = try await Qwen3TTSModel.fromPretrained(modelPath)
         print("\u{001B}[32mQwen3 TTS model loaded!\u{001B}[0m")
@@ -369,7 +378,10 @@ struct Qwen3TTSTests {
     /// Test Base model loading with encoder support (for voice cloning)
     @Test func testQwen3TTSBaseModelEncoder() async throws {
         // 1. Load Qwen3 TTS Base model (has encoder for voice cloning)
-        let modelPath = "/Users/alex/Downloads/NewQWen3TTS/Qwen3-TTS-12Hz-1.7B-Base-bf16"
+        guard let modelPath = TestResources.baseModelPath else {
+            print(TestResources.skipMessage("testQwen3TTSBaseModelEncoder", env: "QWEN3_TTS_BASE_MODEL_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading Qwen3 TTS Base model from: \(modelPath)...\u{001B}[0m")
         let model = try await Qwen3TTSModel.fromPretrained(modelPath)
         print("\u{001B}[32mQwen3 TTS Base model loaded!\u{001B}[0m")
@@ -411,7 +423,10 @@ struct Qwen3TTSTests {
     /// Test voice cloning with Base model
     @Test func testQwen3TTSVoiceClone() async throws {
         // 1. Load Qwen3 TTS Base model (supports voice cloning)
-        let modelPath = "/Users/alex/Downloads/NewQWen3TTS/Qwen3-TTS-12Hz-1.7B-Base-bf16"
+        guard let modelPath = TestResources.baseModelPath else {
+            print(TestResources.skipMessage("testQwen3TTSVoiceClone", env: "QWEN3_TTS_BASE_MODEL_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading Qwen3 TTS Base model for voice cloning...\u{001B}[0m")
         let model = try await Qwen3TTSModel.fromPretrained(modelPath)
         print("\u{001B}[32mQwen3 TTS Base model loaded!\u{001B}[0m")
@@ -420,7 +435,10 @@ struct Qwen3TTSTests {
         #expect(model.supportsVoiceCloning == true, "Base model should support voice cloning")
 
         // 3. Load reference audio
-        let refAudioPath = "/Users/alex/Downloads/NewQWen3TTS/test_voice_clone.wav"
+        guard let refAudioPath = TestResources.referenceAudioPath else {
+            print(TestResources.skipMessage("testQwen3TTSVoiceClone", env: "QWEN3_TTS_REFERENCE_AUDIO_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading reference audio from: \(refAudioPath)\u{001B}[0m")
         let (sampleRate, refAudioRaw) = try loadAudioArray(from: URL(fileURLWithPath: refAudioPath))
         print("  Sample rate: \(sampleRate), samples: \(refAudioRaw.shape[0])")
@@ -462,7 +480,10 @@ struct Qwen3TTSTests {
     /// Test Chinese text generation
     @Test func testQwen3TTSChinese() async throws {
         // 1. Load model
-        let modelPath = "/Users/alex/Downloads/NewQWen3TTS/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+        guard let modelPath = TestResources.voiceDesignModelPath else {
+            print(TestResources.skipMessage("testQwen3TTSChinese", env: "QWEN3_TTS_VOICEDESIGN_MODEL_PATH"))
+            return
+        }
         print("\u{001B}[33mLoading Qwen3 TTS model...\u{001B}[0m")
         let model = try await Qwen3TTSModel.fromPretrained(modelPath)
         print("\u{001B}[32mQwen3 TTS model loaded!\u{001B}[0m")

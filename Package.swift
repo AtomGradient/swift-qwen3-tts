@@ -3,7 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "swift-qwen3-tts",
-    platforms: [.macOS(.v14), .iOS(.v17)],
+    platforms: [
+        .macOS("15.0"),
+        .iOS("18.0"),
+    ],
     products: [
         // Core Qwen3 TTS library
         .library(

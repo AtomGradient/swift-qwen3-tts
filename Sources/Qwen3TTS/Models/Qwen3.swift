@@ -592,7 +592,8 @@ public class Qwen3TTSModel: Module {
         topK: Int = 50,
         topP: Float = 1.0,
         repetitionPenalty: Float = 1.05,
-        maxTokens: Int = 2048
+        maxTokens: Int = 2048,
+        onToken: ((Int) -> Void)? = nil
     ) throws -> MLXArray {
         guard let talkerConfig = config.talkerConfig else {
             throw Qwen3TTSError.modelNotInitialized("Talker config not available")
@@ -660,6 +661,7 @@ public class Qwen3TTSModel: Module {
             if tokenValue == eosTokenId {
                 break
             }
+            onToken?(tokenValue)
 
             // Generate remaining 15 codebooks using Code Predictor
             var codeTokens: [MLXArray] = [nextToken]
@@ -787,7 +789,8 @@ public class Qwen3TTSModel: Module {
         topK: Int = 50,
         topP: Float = 1.0,
         repetitionPenalty: Float = 1.05,
-        maxTokens: Int = 2048
+        maxTokens: Int = 2048,
+        onToken: ((Int) -> Void)? = nil
     ) throws -> MLXArray {
         guard let talkerConfig = config.talkerConfig else {
             throw Qwen3TTSError.modelNotInitialized("Talker config not available")
@@ -865,6 +868,7 @@ public class Qwen3TTSModel: Module {
             if tokenValue == eosTokenId {
                 break
             }
+            onToken?(tokenValue)
 
             // Generate remaining 15 codebooks using Code Predictor
             var codeTokens: [MLXArray] = [nextToken]
@@ -974,8 +978,8 @@ public class Qwen3TTSModel: Module {
     /// The reference audio and its transcript are used as context for generating speech
     /// in the same voice.
     ///
-    /// **Note**: This feature requires the speech tokenizer encoder, which is not yet
-    /// implemented in Swift. Currently, only speaker embedding extraction is available.
+    /// **Note**: This feature requires a model that includes speech tokenizer encoder
+    /// weights (typically Base variants).
     ///
     /// - Parameters:
     ///   - text: Text to synthesize in the cloned voice
@@ -1011,7 +1015,8 @@ public class Qwen3TTSModel: Module {
         topK: Int = 50,
         topP: Float = 1.0,
         repetitionPenalty: Float = 1.5,
-        maxTokens: Int = 2048
+        maxTokens: Int = 2048,
+        onToken: ((Int) -> Void)? = nil
     ) throws -> MLXArray {
         // Voice cloning requires:
         // 1. Speech tokenizer encoder to encode reference audio to codes
@@ -1095,6 +1100,7 @@ public class Qwen3TTSModel: Module {
             }
 
             generatedTokens.append(tokenValue)
+            onToken?(tokenValue)
 
             // Generate remaining codebook tokens with code predictor
             var codeTokens = [nextToken]
@@ -1201,8 +1207,6 @@ public class Qwen3TTSModel: Module {
     /// Voice cloning requires:
     /// - Base model type (not VoiceDesign or CustomVoice)
     /// - Speech tokenizer with encoder capability
-    ///
-    /// Currently returns false as the speech tokenizer encoder is not yet implemented.
     public var supportsVoiceCloning: Bool {
         guard config.ttsModelType == "base" else { return false }
         guard let tokenizer = speechTokenizer else { return false }
@@ -1365,58 +1369,6 @@ public class Qwen3TTSModel: Module {
                 repetitionPenalty: repetitionPenalty,
                 maxTokens: maxTokens
             )
-        }
-    }
-
-    /// Generate with streaming output
-    ///
-    /// See `generate()` for parameter documentation and model type routing.
-    public func generateStream(
-        text: String,
-        speaker: String? = nil,
-        instruct: String? = nil,
-        language: String = "auto",
-        temperature: Float = 0.9,
-        topK: Int = 50,
-        topP: Float = 1.0,
-        repetitionPenalty: Float = 1.05,
-        maxTokens: Int = 2048
-    ) -> AsyncThrowingStream<Qwen3TTSGeneration, Error> {
-        AsyncThrowingStream { continuation in
-            Task {
-                do {
-                    let startTime = Date()
-
-                    let audio = try await self.generate(
-                        text: text,
-                        speaker: speaker,
-                        instruct: instruct,
-                        language: language,
-                        temperature: temperature,
-                        topK: topK,
-                        topP: topP,
-                        repetitionPenalty: repetitionPenalty,
-                        maxTokens: maxTokens
-                    )
-
-                    let totalTime = Date().timeIntervalSince(startTime)
-
-                    let info = Qwen3TTSGenerationInfo(
-                        promptTokenCount: 0,
-                        generationTokenCount: 0,
-                        prefillTime: 0,
-                        generateTime: totalTime,
-                        tokensPerSecond: 0,
-                        peakMemoryUsage: Double(GPU.peakMemory) / 1e9
-                    )
-
-                    continuation.yield(.info(info))
-                    continuation.yield(.audio(audio))
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
         }
     }
 
